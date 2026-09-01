@@ -1,46 +1,130 @@
-# ISO 20022 SEPA PAIN.002 & PAIN.008 Loader for Bank Statement Parser
+<!-- SPDX-License-Identifier: Apache-2.0 OR MIT -->
 
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-Apache_2.0_OR_MIT-blue.svg)](LICENSE)
-[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/sebastienrousseau/bankstatementparser-loader-sepa)
+<p align="center">
+  <img
+    src="https://cloudcdn.pro/bankstatementparser/v1/logos/bankstatementparser.svg"
+    alt="bankstatementparser-loader-sepa logo"
+    width="120"
+    height="120"
+  />
+</p>
 
-ISO 20022 SEPA `pain.002` (Payment Status Report) and `pain.008` (Direct Debit Initiation & Mandates) loader plugin for [`bankstatementparser`](https://github.com/sebastienrousseau/bankstatementparser).
+<h1 align="center">bankstatementparser-loader-sepa</h1>
+
+<p align="center">
+  <b>ISO 20022 SEPA PAIN.002 Payment Status & PAIN.008 Direct Debit loader plugin for bankstatementparser.</b>
+</p>
+
+<p align="center">
+  <a href="https://pypi.org/project/bankstatementparser-loader-sepa/"><img src="https://img.shields.io/pypi/v/bankstatementparser-loader-sepa?style=for-the-badge" alt="PyPI version" /></a>
+  <a href="https://pypi.org/project/bankstatementparser-loader-sepa/"><img src="https://img.shields.io/pypi/pyversions/bankstatementparser-loader-sepa.svg?style=for-the-badge" alt="Python versions" /></a>
+  <a href="https://pypi.org/project/bankstatementparser-loader-sepa/"><img src="https://img.shields.io/pypi/dm/bankstatementparser-loader-sepa.svg?style=for-the-badge" alt="PyPI downloads" /></a>
+  <a href="https://github.com/sebastienrousseau/bankstatementparser-loader-sepa/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/sebastienrousseau/bankstatementparser-loader-sepa/ci.yml?branch=main&label=Tests&style=for-the-badge" alt="Tests" /></a>
+  <a href="#license"><img src="https://img.shields.io/pypi/l/bankstatementparser-loader-sepa?style=for-the-badge" alt="License" /></a>
+</p>
 
 ---
 
-## Features
+## Contents
 
-- **PAIN.002 Payment Status Reports**: Ingests payment status messages (`ACTC`, `RJCT`, `PDNG`, `PART`) and extracts reject reason codes (`AC01`, `AM04`, `MS03`).
-- **PAIN.008 Direct Debit & Mandates**: Ingests SEPA Direct Debit collection files and mandates (`MndtId`, sequence types, creditor/debtor details).
-- **Defused XML Security**: Protection against XXE and expansion attacks.
-- **Unified Domain Models**: Transforms status reports and collections into standard `Transaction` objects.
+- [What is bankstatementparser-loader-sepa?](#what-is-bankstatementparser-loader-sepa) — the problem it solves
+- [Install](#install) — PyPI, virtualenv
+- [Quick start](#quick-start) — ingest SEPA status files in three lines
+- [Public API](#public-api) — `load_sepa`, `load_sepa_file`, `summarize_sepa`
+- [Supported Schemas](#supported-schemas) — PAIN.002 and PAIN.008 namespaces
+- [Status Codes](#status-codes) — `ACCP`, `RJCT`, `ACSC`, `PDNG`, `RJCT` error reason decoding
+- [Development](#development) — quality gates, tests
+- [Ecosystem](#ecosystem) — modular package suite
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## Installation
+## What is bankstatementparser-loader-sepa?
 
-```bash
-pip install bankstatementparser-loader-sepa
+**SEPA PAIN.002** (Customer Payment Status Report) and **PAIN.008** (Customer Direct Debit Initiation) are the core ISO 20022 XML standards governing payment execution feedback, rejections, and direct debit collection across the Single Euro Payments Area.
+
+**bankstatementparser-loader-sepa** parses SEPA PAIN.002 and PAIN.008 documents into unified `bankstatementparser` `Transaction` objects and structured reports.
+
+| Concern | How this loader handles it |
+| :--- | :--- |
+| **Schema Coverage** | Supports `pain.002.001.03`, `pain.002.001.10`, `pain.008.001.02`, `pain.008.001.08` |
+| **Status Extraction** | Parses group status (`<GrpSts>`) and transaction status (`<TxSts>`): `ACCP`, `ACSC`, `RJCT`, `PDNG` |
+| **Rejection Reasons** | Captures ISO reason codes (`AC01`, `AC04`, `AM04`, `MS03`, `MD01`, etc.) into transaction references |
+| **Mandate Details** | Extracts mandate ID, debtor account, and creditor identifier for reconciliation |
+
+---
+
+## Install
+
+| Channel | Command | Notes |
+| :--- | :--- | :--- |
+| PyPI | `pip install bankstatementparser-loader-sepa` | Pulls in `bankstatementparser >= 0.0.19` |
+| Source | `git clone https://github.com/sebastienrousseau/bankstatementparser-loader-sepa && cd bankstatementparser-loader-sepa && poetry install` | For local development |
+
+Requires Python 3.10 or later. Compatible with macOS, Linux, and Windows.
+
+<details>
+<summary>Using an isolated virtual environment (recommended)</summary>
+
+```sh
+python -m venv venv
+source venv/bin/activate        # macOS/Linux
+venv\Scripts\activate           # Windows
+python -m pip install -U bankstatementparser-loader-sepa
 ```
 
+</details>
+
 ---
 
-## Quickstart
+
+## Quick start
 
 ```python
 from bankstatementparser_loader_sepa import load_sepa_file, summarize_sepa
 
-# 1. Parse SEPA payment status or direct debit file
-transactions = load_sepa_file("pain002_status.xml")
+# Ingest SEPA payment status report
+transactions = load_sepa_file("pain002_report.xml")
 for tx in transactions:
-    print(f"{tx.booking_date} | {tx.description} | {tx.amount} {tx.currency}")
+    print(f"{tx.booking_date} | {tx.description} | Status: {tx.reference} | {tx.amount} {tx.currency}")
 
-# 2. Get message summary
-summary = summarize_sepa(open("pain002_status.xml").read())
-print(f"Type: {summary.message_type} | Items: {summary.item_count}")
+# Extract status batch summary
+summary = summarize_sepa(open("pain002_report.xml").read())
+print(f"Group Status: {summary.group_status} | Accepted: {summary.accepted_count} | Rejected: {summary.rejected_count}")
 ```
 
 ---
+
+## Public API
+
+- `load_sepa(xml_data: str | bytes) -> list[Transaction]`: Ingests SEPA PAIN.002 / PAIN.008 XML data.
+- `load_sepa_file(file_path: str | Path) -> list[Transaction]`: Ingests local SEPA file.
+- `summarize_sepa(xml_data: str | bytes) -> SepaMessageSummary`: Extracts message ID, group status, accepted/rejected counts.
+- `SepaStatementParser`: Main parser class implementing `parse()` and `to_transactions()`.
+
+---
+
+## Development
+
+The project enforces strict code-quality gates: 100% test and branch coverage, strict type annotations (`mypy`), style linting (`ruff`), docstring coverage (`interrogate`), and security scanning (`bandit`).
+
+```bash
+# Run test suite with branch coverage enforcement
+poetry run pytest
+
+# Type checking and linting
+poetry run mypy .
+poetry run ruff check .
+poetry run ruff format --check .
+
+# Documentation and security gates
+poetry run interrogate -v
+poetry run bandit -r . -c pyproject.toml
+```
+
+---
+
 
 ## Ecosystem
 
@@ -65,6 +149,13 @@ print(f"Type: {summary.message_type} | Items: {summary.item_count}")
 
 ---
 
+## Contributing
+
+Contributions are welcome! Please submit an issue or pull request on GitHub. Ensure that all quality gates pass and test coverage remains at 100%.
+
+---
+
 ## License
 
-Dual-licensed under Apache 2.0 and MIT.
+This project is dual-licensed under the **Apache License 2.0** and the **MIT License**. See [LICENSE-APACHE](LICENSE-APACHE) and [LICENSE-MIT](LICENSE-MIT) for full details.
+
