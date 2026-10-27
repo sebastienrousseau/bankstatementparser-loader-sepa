@@ -16,6 +16,7 @@ from typing import Any
 import defusedxml.ElementTree as DefusedET
 import pandas as pd
 from bankstatementparser.base_parser import BankStatementParser
+from bankstatementparser.record_types import SummaryRecord
 from bankstatementparser.transaction_models import Transaction
 
 SOURCE = "sepa"
@@ -65,6 +66,19 @@ class SepaMessageSummary:
     currency: str | None
     item_count: int
     total_amount: Decimal
+
+
+class SepaSummaryRecord(SummaryRecord, total=False):
+    """``get_summary()`` result: the core summary keys plus SEPA header fields.
+
+    A ``SummaryRecord`` subtype, so the override matches the base parser's
+    contract. ``total_amount`` is ``Decimal``, as ``SummaryRecord`` declares,
+    summed from the amounts parsed out of the message text.
+    """
+
+    message_type: str
+    creation_date: str | None
+    item_count: int
 
 
 def _extract_account_id(acct_elem: ET.Element | None) -> str | None:
@@ -392,11 +406,12 @@ class SepaStatementParser(BankStatementParser):
         """
         return load_sepa_file(self.file_name)
 
-    def get_summary(self) -> dict[str, Any]:
+    def get_summary(self) -> SepaSummaryRecord:
         """Get summary metadata and metrics for the SEPA file.
 
         Returns:
-            Dictionary with statement statistics.
+            Message statistics. ``total_amount`` is ``Decimal``, as
+            ``SummaryRecord`` declares.
         """
         if self._summary_cache is None:
             content = Path(self.file_name).read_bytes()
@@ -412,5 +427,5 @@ class SepaStatementParser(BankStatementParser):
             "account_id": s.account_id,
             "currency": s.currency,
             "item_count": s.item_count,
-            "total_amount": float(s.total_amount),
+            "total_amount": s.total_amount,
         }
