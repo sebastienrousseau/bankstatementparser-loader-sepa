@@ -186,7 +186,24 @@ def test_sepa_statement_parser_class(tmp_path: Path) -> None:
     summary = parser.get_summary()
     assert summary["message_type"] == "PAIN.008"
     assert summary["item_count"] == 1
-    assert summary["total_amount"] == 89.90
+    assert summary["total_amount"] == Decimal("89.90")
+
+
+def test_get_summary_total_amount_is_decimal_not_float(tmp_path: Path) -> None:
+    """The summary total keeps its exact decimal value, as SummaryRecord declares.
+
+    A float would hold 89.90 inexactly and break the core contract.
+    """
+    sample_file = tmp_path / "pain008.xml"
+    sample_file.write_text(_sample_pain008_xml(), encoding="utf-8")
+
+    total = SepaStatementParser(sample_file).get_summary()["total_amount"]
+
+    assert isinstance(total, Decimal), (
+        f"total_amount is {type(total).__name__}"
+    )
+    assert not isinstance(total, float)
+    assert str(total) == "89.90"
 
 
 def test_sepa_statement_parser_empty(tmp_path: Path) -> None:
