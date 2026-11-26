@@ -1,9 +1,4 @@
 {
-  "bankstatementparser_loader_sepa/loader.py::_parse_sepa_xml": {
-    "cognitive": 48,
-    "cyclomatic": 24,
-    "lines": 72
-  },
   "tests/test_loader.py::test_helpers_and_error_branches": {
     "cyclomatic": 14
   },

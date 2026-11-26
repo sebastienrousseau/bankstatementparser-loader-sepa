@@ -52,6 +52,9 @@ one version across every package, at 0.0.35.
   PYSEC-2026-1845; `tomli` (Python < 3.11) and `packaging` declared for
   the conformance test.
 - GitHub Actions: `actions/checkout` v7, `actions/setup-python` v7.
+- `_parse_sepa_xml` is split into small helpers so every function is
+  under the complexity ceilings. Output is unchanged, pinned by
+  characterisation tests.
 
 ### Fixed
 

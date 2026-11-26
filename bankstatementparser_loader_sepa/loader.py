@@ -193,6 +193,89 @@ def _process_pain008_tx(
     )
 
 
+def _detect_message(root: ET.Element) -> tuple[bool, bool]:
+    """Return ``(is_pain002, is_pain008)`` from the first marker element."""
+    for child in root.iter():
+        ctag = _clean_tag(child)
+        if ctag in ("CstmrPmtStsRpt", "pain.002"):
+            return True, False
+        if ctag in ("CstmrDrctDbtInitn", "pain.008"):
+            return False, True
+    return False, False
+
+
+def _parse_creation_date(cre_dt_tm: str | None) -> datetime | None:
+    """Parse ``CreDtTm``, or return ``None`` if absent or not ISO 8601."""
+    if not cre_dt_tm:
+        return None
+    try:
+        clean_dt = cre_dt_tm.strip().replace("Z", "+00:00")
+        return datetime.fromisoformat(clean_dt)
+    except Exception:
+        return None
+
+
+def _collect_pain002(
+    root: ET.Element, msg_id: str | None, records: list[dict[str, Any]]
+) -> None:
+    """Append a record for every ``TxInfAndSts`` node, in document order."""
+    for child in root.iter():
+        if _clean_tag(child) == "TxInfAndSts":
+            _process_pain002_tx(child, msg_id, records)
+
+
+def _creditor_account(pmt: ET.Element) -> str | None:
+    """Return the account id of the first ``CdtrAcct`` under ``pmt``."""
+    for c in pmt.iter():
+        if _clean_tag(c) == "CdtrAcct":
+            return _extract_account_id(c)
+    return None
+
+
+def _collect_payment_info(
+    pmt: ET.Element, records: list[dict[str, Any]]
+) -> None:
+    """Append a record for every ``DrctDbtTxInf`` in one ``PmtInf`` block."""
+    colltn_dt = _parse_iso_date(_find_text(pmt, "ReqdColltnDt"))
+    cdtr_name = _find_text(pmt, "Nm")
+    cdtr_acct = _creditor_account(pmt)
+    for tx in pmt.iter():
+        if _clean_tag(tx) == "DrctDbtTxInf":
+            _process_pain008_tx(
+                tx, cdtr_name, cdtr_acct, colltn_dt, "EUR", records
+            )
+
+
+def _collect_pain008(root: ET.Element, records: list[dict[str, Any]]) -> None:
+    """Append the records of every ``PmtInf`` block, in document order."""
+    for pmt in root.iter():
+        if _clean_tag(pmt) == "PmtInf":
+            _collect_payment_info(pmt, records)
+
+
+def _collect_records(
+    root: ET.Element, msg_id: str | None
+) -> tuple[str, list[dict[str, Any]]]:
+    """Return the message type and the records of a parsed message.
+
+    A message with no PAIN.002 or PAIN.008 marker is still read as one
+    when it has ``TxInfAndSts`` or ``PmtInf`` text; otherwise its type
+    is the root element's local name and it has no records.
+    """
+    is_pain002, is_pain008 = _detect_message(root)
+    records: list[dict[str, Any]] = []
+
+    if is_pain002 or (not is_pain008 and _find_text(root, "TxInfAndSts")):
+        _collect_pain002(root, msg_id, records)
+        return "PAIN.002", records
+
+    if is_pain008 or _find_text(root, "PmtInf"):
+        _collect_pain008(root, records)
+        return "PAIN.008", records
+
+    return _clean_tag(root), records
+
+
 def _parse_sepa_xml(
     xml_content: str | bytes,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -203,57 +286,9 @@ def _parse_sepa_xml(
         xml_bytes = xml_content
 
     root = DefusedET.fromstring(xml_bytes)
-    root_tag = _clean_tag(root)
-
-    # Detect PAIN.002 vs PAIN.008
-    is_pain002 = False
-    is_pain008 = False
-    for child in root.iter():
-        ctag = _clean_tag(child)
-        if ctag in ("CstmrPmtStsRpt", "pain.002"):
-            is_pain002 = True
-            break
-        if ctag in ("CstmrDrctDbtInitn", "pain.008"):
-            is_pain008 = True
-            break
-
-    msg_type = (
-        "PAIN.002" if is_pain002 else ("PAIN.008" if is_pain008 else root_tag)
-    )
     msg_id = _find_text(root, "MsgId")
-    cre_dt_tm = _find_text(root, "CreDtTm")
-    creation_date = None
-    if cre_dt_tm:
-        try:
-            clean_dt = cre_dt_tm.strip().replace("Z", "+00:00")
-            creation_date = datetime.fromisoformat(clean_dt)
-        except Exception:
-            creation_date = None
-
-    records: list[dict[str, Any]] = []
-
-    if is_pain002 or (not is_pain008 and _find_text(root, "TxInfAndSts")):
-        msg_type = "PAIN.002"
-        for child in root.iter():
-            if _clean_tag(child) == "TxInfAndSts":
-                _process_pain002_tx(child, msg_id, records)
-
-    elif is_pain008 or _find_text(root, "PmtInf"):
-        msg_type = "PAIN.008"
-        for pmt in root.iter():
-            if _clean_tag(pmt) == "PmtInf":
-                colltn_dt = _parse_iso_date(_find_text(pmt, "ReqdColltnDt"))
-                cdtr_name = _find_text(pmt, "Nm")
-                cdtr_acct = None
-                for c in pmt.iter():
-                    if _clean_tag(c) == "CdtrAcct":
-                        cdtr_acct = _extract_account_id(c)
-                        break
-                for tx in pmt.iter():
-                    if _clean_tag(tx) == "DrctDbtTxInf":
-                        _process_pain008_tx(
-                            tx, cdtr_name, cdtr_acct, colltn_dt, "EUR", records
-                        )
+    creation_date = _parse_creation_date(_find_text(root, "CreDtTm"))
+    msg_type, records = _collect_records(root, msg_id)
 
     header = {
         "message_type": msg_type,
