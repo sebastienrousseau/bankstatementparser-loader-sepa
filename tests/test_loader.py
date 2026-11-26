@@ -268,3 +268,60 @@ def test_fuzz_clean_tag(tag_suffix: str) -> None:
     """Property-based fuzzing of tag cleaner."""
     elem = ET.Element(f"{{urn:iso:std:test}}{tag_suffix}")
     assert _clean_tag(elem) == tag_suffix
+
+
+def test_find_text_skips_a_blank_match() -> None:
+    """A matching element holding only whitespace is passed over."""
+    root = ET.fromstring("<Root><MsgId> </MsgId><MsgId>M-1</MsgId></Root>")
+    assert _find_text(root, "MsgId") == "M-1"
+
+
+def test_pain002_status_without_an_amount() -> None:
+    """A status with no amount element reports 0.00 EUR."""
+    xml = """<Document><CstmrPmtStsRpt>
+        <TxInfAndSts><TxSts>ACCP</TxSts></TxInfAndSts>
+    </CstmrPmtStsRpt></Document>"""
+    _, recs = _parse_sepa_xml(xml)
+    assert recs[0]["amount"] == Decimal("0.00")
+    assert recs[0]["currency"] == "EUR"
+
+
+def test_pain002_amount_without_currency_defaults_to_eur() -> None:
+    """An amount with no Ccy attribute keeps the EUR default."""
+    xml = """<Document><CstmrPmtStsRpt>
+        <TxInfAndSts><TxSts>ACCP</TxSts><OrgnlTxAmt>12.50</OrgnlTxAmt></TxInfAndSts>
+    </CstmrPmtStsRpt></Document>"""
+    _, recs = _parse_sepa_xml(xml)
+    assert recs[0]["amount"] == Decimal("12.50")
+    assert recs[0]["currency"] == "EUR"
+
+
+def test_pain008_debit_without_an_amount() -> None:
+    """A direct debit with no InstdAmt reports 0.00 in the batch currency."""
+    xml = """<Document><CstmrDrctDbtInitn>
+        <PmtInf><DrctDbtTxInf><Dbtr><Nm>BOB</Nm></Dbtr></DrctDbtTxInf></PmtInf>
+    </CstmrDrctDbtInitn></Document>"""
+    _, recs = _parse_sepa_xml(xml)
+    assert recs[0]["amount"] == Decimal("0.00")
+    assert recs[0]["currency"] == "EUR"
+
+
+def test_pain008_amount_without_currency_keeps_batch_currency() -> None:
+    """An InstdAmt with no Ccy attribute keeps the batch currency."""
+    xml = """<Document><CstmrDrctDbtInitn>
+        <PmtInf><DrctDbtTxInf><InstdAmt>7.25</InstdAmt></DrctDbtTxInf></PmtInf>
+    </CstmrDrctDbtInitn></Document>"""
+    _, recs = _parse_sepa_xml(xml)
+    assert recs[0]["amount"] == Decimal("7.25")
+    assert recs[0]["currency"] == "EUR"
+
+
+def test_summary_is_read_once_and_cached(tmp_path: Path) -> None:
+    """A second get_summary() call reuses the first result."""
+    sample_file = tmp_path / "status.xml"
+    sample_file.write_text(_sample_pain002_xml(), encoding="utf-8")
+    parser = SepaStatementParser(sample_file)
+
+    first = parser.get_summary()
+    sample_file.unlink()
+    assert parser.get_summary() == first
