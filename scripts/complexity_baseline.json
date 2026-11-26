@@ -1,0 +1,23 @@
+{
+  "bankstatementparser_loader_sepa/loader.py::_parse_sepa_xml": {
+    "cognitive": 48,
+    "cyclomatic": 24,
+    "lines": 72
+  },
+  "tests/test_loader.py::test_helpers_and_error_branches": {
+    "cyclomatic": 14
+  },
+  "tests/test_loader.py::test_load_pain002_payment_status": {
+    "cyclomatic": 12
+  },
+  "tests/test_loader.py::test_load_pain008_direct_debit": {
+    "cyclomatic": 12
+  },
+  "tests/test_suite_conformance.py": {
+    "file_lines": 678
+  },
+  "tests/test_suite_conformance.py::_dev_spec": {
+    "cognitive": 23,
+    "cyclomatic": 12
+  }
+}
