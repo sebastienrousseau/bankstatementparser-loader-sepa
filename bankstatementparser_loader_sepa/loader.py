@@ -91,6 +91,26 @@ def _extract_account_id(acct_elem: ET.Element | None) -> str | None:
     return _find_text(acct_elem, "Id")
 
 
+def _find_amount(
+    node: ET.Element, tags: tuple[str, ...], default_currency: str
+) -> tuple[Decimal, str]:
+    """Return the first non-empty amount under ``node`` and its currency.
+
+    The amount is ``0.00`` when no element named in ``tags`` has text or
+    the text is not a number. The currency is the element's ``Ccy``
+    attribute, or ``default_currency`` when there is none.
+    """
+    for child in node.iter():
+        text = (child.text or "").strip()
+        if _clean_tag(child) in tags and text:
+            currency = child.attrib.get("Ccy", default_currency)
+            try:
+                return Decimal(text), currency
+            except Exception:
+                return Decimal("0.00"), currency
+    return Decimal("0.00"), default_currency
+
+
 def _process_pain002_tx(
     tx_node: ET.Element,
     msg_id: str | None,
@@ -104,26 +124,9 @@ def _process_pain002_tx(
         _find_text(tx_node, "Cd") or _find_text(tx_node, "AddtlInf") or ""
     )
 
-    amt_elem = None
-    for child in tx_node.iter():
-        if (
-            _clean_tag(child) in ("OrgnlTxAmt", "InstdAmt", "Amt")
-            and child.text
-            and child.text.strip()
-        ):
-            amt_elem = child
-            break
-
-    amount = Decimal("0.00")
-    currency = "EUR"
-    if amt_elem is not None:
-        if "Ccy" in amt_elem.attrib:
-            currency = amt_elem.attrib["Ccy"]
-        if amt_elem.text:
-            try:
-                amount = Decimal(amt_elem.text.strip())
-            except Exception:
-                amount = Decimal("0.00")
+    amount, currency = _find_amount(
+        tx_node, ("OrgnlTxAmt", "InstdAmt", "Amt"), "EUR"
+    )
 
     # Status description
     desc = f"SEPA Status: {status}"
@@ -157,26 +160,7 @@ def _process_pain008_tx(
     results: list[dict[str, Any]],
 ) -> None:
     """Process a single Direct Debit transaction in PAIN.008."""
-    amt_elem = None
-    for child in tx_node.iter():
-        if (
-            _clean_tag(child) == "InstdAmt"
-            and child.text
-            and child.text.strip()
-        ):
-            amt_elem = child
-            break
-
-    raw_amt = Decimal("0.00")
-    curr = currency
-    if amt_elem is not None:
-        if "Ccy" in amt_elem.attrib:
-            curr = amt_elem.attrib["Ccy"]
-        if amt_elem.text:
-            try:
-                raw_amt = Decimal(amt_elem.text.strip())
-            except Exception:
-                raw_amt = Decimal("0.00")
+    raw_amt, curr = _find_amount(tx_node, ("InstdAmt",), currency)
 
     debtor_name = _find_text(tx_node, "Nm")
     debtor_iban = _extract_account_id(tx_node)
