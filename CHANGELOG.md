@@ -65,6 +65,7 @@ one version across every package, at 0.0.35.
 ## [0.0.19] - 2026-09-01
 
 ### Added
+
 - Initial production release of `bankstatementparser-loader-sepa`: ISO 20022 SEPA PAIN.002 Status & PAIN.008 Mandate Loader.
 - 100% statement and branch test coverage.
 - High-concurrency throughput testing (>10,000 TPS) with sub-second response times.
