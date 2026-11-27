@@ -1,0 +1,10 @@
+# Normalise text to LF in the repository.
+* text=auto eol=lf
+
+# Images are binary.
+*.gif binary
+*.png binary
+
+# Fixtures and fuzz seeds are byte-exact inputs.
+tests/fixtures/** -text
+fuzz/corpus/** -text

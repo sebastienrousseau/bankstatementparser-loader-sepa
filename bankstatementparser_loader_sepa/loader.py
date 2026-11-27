@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import re
 import xml.etree.ElementTree as ET  # nosec B405
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -18,8 +19,15 @@ import pandas as pd
 from bankstatementparser.base_parser import BankStatementParser
 from bankstatementparser.record_types import SummaryRecord
 from bankstatementparser.transaction_models import Transaction
+from defusedxml import DefusedXmlException
 
 SOURCE = "sepa"
+
+# An ISO 20022 amount (ActiveOrHistoricCurrencyAndAmount): ASCII digits
+# with an optional fraction, no sign and no exponent. ``Decimal`` also
+# accepts NaN, Infinity, exponents, underscores and other scripts'
+# digits, none of which is an amount.
+_AMOUNT = re.compile(r"[0-9]+(?:\.[0-9]+)?")
 
 
 def _clean_tag(elem: ET.Element) -> str:
@@ -97,17 +105,17 @@ def _find_amount(
     """Return the first non-empty amount under ``node`` and its currency.
 
     The amount is ``0.00`` when no element named in ``tags`` has text or
-    the text is not a number. The currency is the element's ``Ccy``
+    the text is not an ISO 20022 amount (ASCII digits with an optional
+    fraction). The currency is the element's ``Ccy``
     attribute, or ``default_currency`` when there is none.
     """
     for child in node.iter():
         text = (child.text or "").strip()
         if _clean_tag(child) in tags and text:
             currency = child.attrib.get("Ccy", default_currency)
-            try:
+            if _AMOUNT.fullmatch(text):
                 return Decimal(text), currency
-            except Exception:
-                return Decimal("0.00"), currency
+            return Decimal("0.00"), currency
     return Decimal("0.00"), default_currency
 
 
@@ -276,6 +284,28 @@ def _collect_records(
     return _clean_tag(root), records
 
 
+def _parse_root(xml_bytes: bytes) -> ET.Element:
+    """Parse ``xml_bytes`` with defusedxml, refusing entity declarations.
+
+    An XML declaration naming an encoding expat cannot use raises
+    ``LookupError``, ``ValueError`` or ``UnicodeError`` inside the
+    parser; it is re-raised as ``ParseError``, the documented error for
+    a payload that is not readable XML. defusedxml's own refusal (a
+    ``ValueError`` too) is left as it is.
+
+    Raises:
+        xml.etree.ElementTree.ParseError: The payload is not readable XML.
+        defusedxml.DefusedXmlException: It declares an entity.
+    """
+    try:
+        root: ET.Element = DefusedET.fromstring(xml_bytes)
+    except DefusedXmlException:
+        raise
+    except (LookupError, ValueError) as exc:
+        raise ET.ParseError(f"unreadable XML encoding: {exc}") from exc
+    return root
+
+
 def _parse_sepa_xml(
     xml_content: str | bytes,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -285,7 +315,7 @@ def _parse_sepa_xml(
     else:
         xml_bytes = xml_content
 
-    root = DefusedET.fromstring(xml_bytes)
+    root = _parse_root(xml_bytes)
     msg_id = _find_text(root, "MsgId")
     creation_date = _parse_creation_date(_find_text(root, "CreDtTm"))
     msg_type, records = _collect_records(root, msg_id)
