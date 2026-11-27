@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import re
 import xml.etree.ElementTree as ET  # nosec B405
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -20,6 +21,12 @@ from bankstatementparser.record_types import SummaryRecord
 from bankstatementparser.transaction_models import Transaction
 
 SOURCE = "sepa"
+
+# An ISO 20022 amount (ActiveOrHistoricCurrencyAndAmount): ASCII digits
+# with an optional fraction, no sign and no exponent. ``Decimal`` also
+# accepts NaN, Infinity, exponents, underscores and other scripts'
+# digits, none of which is an amount.
+_AMOUNT = re.compile(r"[0-9]+(?:\.[0-9]+)?")
 
 
 def _clean_tag(elem: ET.Element) -> str:
@@ -97,17 +104,17 @@ def _find_amount(
     """Return the first non-empty amount under ``node`` and its currency.
 
     The amount is ``0.00`` when no element named in ``tags`` has text or
-    the text is not a number. The currency is the element's ``Ccy``
+    the text is not an ISO 20022 amount (ASCII digits with an optional
+    fraction). The currency is the element's ``Ccy``
     attribute, or ``default_currency`` when there is none.
     """
     for child in node.iter():
         text = (child.text or "").strip()
         if _clean_tag(child) in tags and text:
             currency = child.attrib.get("Ccy", default_currency)
-            try:
+            if _AMOUNT.fullmatch(text):
                 return Decimal(text), currency
-            except Exception:
-                return Decimal("0.00"), currency
+            return Decimal("0.00"), currency
     return Decimal("0.00"), default_currency
 
 
