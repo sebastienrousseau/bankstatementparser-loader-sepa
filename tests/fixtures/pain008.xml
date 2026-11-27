@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.008.001.02">
+  <CstmrDrctDbtInitn>
+    <GrpHdr>
+      <MsgId>DD-2026-0116</MsgId>
+      <CreDtTm>2026-01-16T09:00:00Z</CreDtTm>
+      <NbOfTxs>2</NbOfTxs>
+      <CtrlSum>89.90</CtrlSum>
+      <InitgPty><Nm>ACME ENERGY GMBH</Nm></InitgPty>
+    </GrpHdr>
+    <PmtInf>
+      <PmtInfId>BATCH-01</PmtInfId>
+      <PmtMtd>DD</PmtMtd>
+      <ReqdColltnDt>2026-01-20</ReqdColltnDt>
+      <Cdtr><Nm>ACME ENERGY GMBH</Nm></Cdtr>
+      <CdtrAcct><Id><IBAN>DE89370400440532013000</IBAN></Id></CdtrAcct>
+      <DrctDbtTxInf>
+        <PmtId><EndToEndId>E2E-INV-1001</EndToEndId></PmtId>
+        <InstdAmt Ccy="EUR">64.90</InstdAmt>
+        <DrctDbtTx><MndtRltdInf><MndtId>MANDATE-0042</MndtId></MndtRltdInf></DrctDbtTx>
+        <Dbtr><Nm>JANE DOE</Nm></Dbtr>
+        <DbtrAcct><Id><IBAN>FR7630006000011234567890189</IBAN></Id></DbtrAcct>
+        <RmtInf><Ustrd>Electricity January</Ustrd></RmtInf>
+      </DrctDbtTxInf>
+      <DrctDbtTxInf>
+        <PmtId><EndToEndId>E2E-INV-1002</EndToEndId></PmtId>
+        <InstdAmt Ccy="EUR">25.00</InstdAmt>
+        <DrctDbtTx><MndtRltdInf><MndtId>MANDATE-0043</MndtId></MndtRltdInf></DrctDbtTx>
+        <Dbtr><Nm>JOHN SMITH</Nm></Dbtr>
+        <DbtrAcct><Id><IBAN>NL91ABNA0417164300</IBAN></Id></DbtrAcct>
+        <RmtInf><Ustrd>Gas January</Ustrd></RmtInf>
+      </DrctDbtTxInf>
+    </PmtInf>
+  </CstmrDrctDbtInitn>
+</Document>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.002.001.03">
+  <CstmrPmtStsRpt>
+    <GrpHdr>
+      <MsgId>STS-2026-0121</MsgId>
+      <CreDtTm>2026-01-21T08:15:00Z</CreDtTm>
+    </GrpHdr>
+    <OrgnlGrpInfAndSts>
+      <OrgnlMsgId>DD-2026-0116</OrgnlMsgId>
+      <OrgnlMsgNmId>pain.008.001.02</OrgnlMsgNmId>
+    </OrgnlGrpInfAndSts>
+    <OrgnlPmtInfAndSts>
+      <OrgnlPmtInfId>BATCH-01</OrgnlPmtInfId>
+      <TxInfAndSts>
+        <OrgnlEndToEndId>E2E-INV-1001</OrgnlEndToEndId>
+        <TxSts>ACSC</TxSts>
+        <OrgnlTxRef><Amt><InstdAmt Ccy="EUR">64.90</InstdAmt></Amt></OrgnlTxRef>
+      </TxInfAndSts>
+      <TxInfAndSts>
+        <OrgnlEndToEndId>E2E-INV-1002</OrgnlEndToEndId>
+        <TxSts>RJCT</TxSts>
+        <StsRsnInf><Rsn><Cd>AM04</Cd></Rsn></StsRsnInf>
+        <OrgnlTxRef><Amt><InstdAmt Ccy="EUR">25.00</InstdAmt></Amt></OrgnlTxRef>
+      </TxInfAndSts>
+    </OrgnlPmtInfAndSts>
+  </CstmrPmtStsRpt>
+</Document>
