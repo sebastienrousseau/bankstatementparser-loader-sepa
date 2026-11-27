@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `decimal.InvalidOperation`, the summary could total `NaN` or
   `Infinity`, and `1e5`, `1_000`, a sign or other scripts' digits were
   loaded as numbers.
+- An XML declaration naming an encoding the parser cannot use (an
+  unknown name, a non-text codec, a multi-byte encoding) raised
+  `LookupError`, `ValueError` or `UnicodeError`; it now raises
+  `ParseError`, the documented error for unreadable XML. Found by the
+  new fuzz target.
 - The README described fields the loader does not have
   (`summary.group_status`, `accepted_count`, `rejected_count`), group
   status parsing it does not do, and reason codes stored in references
