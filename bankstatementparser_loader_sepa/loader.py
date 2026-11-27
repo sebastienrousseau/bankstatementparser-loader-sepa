@@ -19,6 +19,7 @@ import pandas as pd
 from bankstatementparser.base_parser import BankStatementParser
 from bankstatementparser.record_types import SummaryRecord
 from bankstatementparser.transaction_models import Transaction
+from defusedxml import DefusedXmlException
 
 SOURCE = "sepa"
 
@@ -283,6 +284,28 @@ def _collect_records(
     return _clean_tag(root), records
 
 
+def _parse_root(xml_bytes: bytes) -> ET.Element:
+    """Parse ``xml_bytes`` with defusedxml, refusing entity declarations.
+
+    An XML declaration naming an encoding expat cannot use raises
+    ``LookupError``, ``ValueError`` or ``UnicodeError`` inside the
+    parser; it is re-raised as ``ParseError``, the documented error for
+    a payload that is not readable XML. defusedxml's own refusal (a
+    ``ValueError`` too) is left as it is.
+
+    Raises:
+        xml.etree.ElementTree.ParseError: The payload is not readable XML.
+        defusedxml.DefusedXmlException: It declares an entity.
+    """
+    try:
+        root: ET.Element = DefusedET.fromstring(xml_bytes)
+    except DefusedXmlException:
+        raise
+    except (LookupError, ValueError) as exc:
+        raise ET.ParseError(f"unreadable XML encoding: {exc}") from exc
+    return root
+
+
 def _parse_sepa_xml(
     xml_content: str | bytes,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -292,7 +315,7 @@ def _parse_sepa_xml(
     else:
         xml_bytes = xml_content
 
-    root = DefusedET.fromstring(xml_bytes)
+    root = _parse_root(xml_bytes)
     msg_id = _find_text(root, "MsgId")
     creation_date = _parse_creation_date(_find_text(root, "CreDtTm"))
     msg_type, records = _collect_records(root, msg_id)
