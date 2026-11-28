@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sebastienrousseau/bankstatementparser-loader-sepa/main/.github/demo.gif" alt="A terminal printing bankstatementparser-loader-sepa 0.0.36, the repository's PAIN.002 fixture, then the 01_basic_usage.py example loading a PAIN.008 collection of two Direct Debits and the status report that settles one and rejects the other" width="100%" />
+  <img src="https://raw.githubusercontent.com/sebastienrousseau/bankstatementparser-loader-sepa/main/.github/demo.gif" alt="A terminal printing bankstatementparser-loader-sepa 0.0.37, the repository's PAIN.002 fixture, then the 01_basic_usage.py example loading a PAIN.008 collection of two Direct Debits and the status report that settles one and rejects the other" width="100%" />
 </p>
 
 ---
@@ -76,7 +76,7 @@ Verify the installation:
 
 ```sh
 python -c "import bankstatementparser_loader_sepa as s; print(s.__version__)"
-# -> 0.0.36
+# -> 0.0.37
 ```
 
 An isolated virtual environment keeps the loader's dependencies apart:

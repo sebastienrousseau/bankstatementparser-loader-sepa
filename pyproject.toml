@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bankstatementparser-loader-sepa"
-version = "0.0.36"
+version = "0.0.37"
 description = "ISO 20022 SEPA PAIN.002 Payment Status & PAIN.008 Direct Debit loader for bankstatementparser."
 authors = ["Sebastien Rousseau <sebastian.rousseau@gmail.com>"]
 license = "Apache-2.0 OR MIT"
@@ -20,7 +20,7 @@ pain008 = "bankstatementparser_loader_sepa.loader:SepaStatementParser"
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
 defusedxml = "^0.7.1"
-bankstatementparser = ">=0.0.35"
+bankstatementparser = ">=0.0.36"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=9.0.3,<10.0.0"
