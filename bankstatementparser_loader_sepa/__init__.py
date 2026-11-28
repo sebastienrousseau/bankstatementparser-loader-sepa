@@ -13,7 +13,7 @@ from .loader import (
     summarize_sepa,
 )
 
-__version__ = "0.0.36"
+__version__ = "0.0.37"
 __all__ = [
     "SepaMessageSummary",
     "SepaStatementParser",
